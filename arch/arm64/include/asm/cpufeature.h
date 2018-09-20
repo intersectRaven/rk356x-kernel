@@ -535,6 +535,8 @@ enum mitigation_state {
 };
 
 enum mitigation_state arm64_get_spectre_bhb_state(void);
+
+extern int do_emulate_mrs(struct pt_regs *regs, u32 sys_reg, u32 rt);
 #endif /* __ASSEMBLY__ */
 
 #endif
