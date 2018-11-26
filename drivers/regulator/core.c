@@ -1194,20 +1194,6 @@ static int set_machine_constraints(struct regulator_dev *rdev)
 		}
 	}
 
-	/* If the constraints say the regulator should be on at this point
-	 * and we have control then make sure it is enabled.
-	 */
-	if (rdev->constraints->always_on || rdev->constraints->boot_on) {
-		/* The regulator may on if it's not switchable or left on */
-		if (!_regulator_is_enabled(rdev)) {
-			ret = _regulator_do_enable(rdev);
-			if (ret < 0 && ret != -EINVAL) {
-				rdev_err(rdev, "failed to enable\n");
-				return ret;
-			}
-		}
-	}
-
 	if ((rdev->constraints->ramp_delay || rdev->constraints->ramp_disable)
 		&& ops->set_ramp_delay) {
 		ret = ops->set_ramp_delay(rdev, rdev->constraints->ramp_delay);
@@ -1250,6 +1236,20 @@ static int set_machine_constraints(struct regulator_dev *rdev)
 		if (ret < 0) {
 			rdev_err(rdev, "failed to set active discharge\n");
 			return ret;
+		}
+	}
+
+	/* If the constraints say the regulator should be on at this point
+	 * and we have control then make sure it is enabled.
+	 */
+	if (rdev->constraints->always_on || rdev->constraints->boot_on) {
+		/* The regulator may on if it's not switchable or left on */
+		if (!_regulator_is_enabled(rdev)) {
+			ret = _regulator_do_enable(rdev);
+			if (ret < 0 && ret != -EINVAL) {
+				rdev_err(rdev, "failed to enable\n");
+				return ret;
+			}
 		}
 	}
 
