@@ -1243,6 +1243,15 @@ static int set_machine_constraints(struct regulator_dev *rdev)
 	 * and we have control then make sure it is enabled.
 	 */
 	if (rdev->constraints->always_on || rdev->constraints->boot_on) {
+		if (rdev->supply) {
+			ret = regulator_enable(rdev->supply);
+			if (ret < 0) {
+				_regulator_put(rdev->supply);
+				rdev->supply = NULL;
+				return ret;
+			}
+		}
+
 		/* The regulator may on if it's not switchable or left on */
 		if (!_regulator_is_enabled(rdev)) {
 			ret = _regulator_do_enable(rdev);
@@ -1251,6 +1260,7 @@ static int set_machine_constraints(struct regulator_dev *rdev)
 				return ret;
 			}
 		}
+		rdev->use_count++;
 	}
 
 	print_constraints(rdev);
@@ -1698,6 +1708,15 @@ static int regulator_resolve_supply(struct regulator_dev *rdev)
 	if (ret < 0) {
 		put_device(&r->dev);
 		goto out;
+	}
+
+	if (rdev->use_count) {
+		ret = regulator_enable(rdev->supply);
+		if (ret < 0) {
+			_regulator_put(rdev->supply);
+			rdev->supply = NULL;
+			goto out;
+		}
 	}
 
 out:
