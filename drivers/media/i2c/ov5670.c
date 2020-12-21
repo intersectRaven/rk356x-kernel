@@ -1576,7 +1576,7 @@ static int ov5670_initialize_controls(struct ov5670 *ov5670)
 		ctrl->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	v4l2_ctrl_new_std(handler, NULL, V4L2_CID_PIXEL_RATE,
-			  0, ov5670->pixel_rate, 1, ov5670->pixel_rate);
+			  ov5670->pixel_rate, ov5670->pixel_rate, 1, ov5670->pixel_rate);
 
 	h_blank = mode->hts_def - mode->width;
 	ov5670->hblank = v4l2_ctrl_new_std(handler, NULL, V4L2_CID_HBLANK,
