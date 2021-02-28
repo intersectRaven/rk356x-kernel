@@ -106,14 +106,11 @@ static const DECLARE_TLV_DB_SCALE(mic_bst_tlv, 0, 1200, 0);
 static unsigned int linin_pga_tlv[] = {
 	TLV_DB_RANGE_HEAD(12),
 	0, 0, TLV_DB_SCALE_ITEM(0, 0, 0),
-	1, 1, TLV_DB_SCALE_ITEM(300, 0, 0),
-	2, 2, TLV_DB_SCALE_ITEM(600, 0, 0),
-	3, 3, TLV_DB_SCALE_ITEM(900, 0, 0),
-	4, 4, TLV_DB_SCALE_ITEM(1200, 0, 0),
-	5, 5, TLV_DB_SCALE_ITEM(1500, 0, 0),
-	6, 6, TLV_DB_SCALE_ITEM(1800, 0, 0),
-	7, 7, TLV_DB_SCALE_ITEM(2100, 0, 0),
-	8, 8, TLV_DB_SCALE_ITEM(2400, 0, 0),
+	1, 1, TLV_DB_SCALE_ITEM(0, 0, 0),
+	2, 2, TLV_DB_SCALE_ITEM(250, 0, 0),
+	3, 3, TLV_DB_SCALE_ITEM(450, 0, 0),
+	4, 7, TLV_DB_SCALE_ITEM(700, 300, 0),
+	8, 10, TLV_DB_SCALE_ITEM(1800, 300, 0),
 };
 
 static unsigned int hpout_vol_tlv[] = {
