@@ -1699,12 +1699,11 @@ static int dwc3_probe(struct platform_device *pdev)
 	}
 
 	dwc3_check_params(dwc);
+	dwc3_debugfs_init(dwc);
 
 	ret = dwc3_core_init_mode(dwc);
 	if (ret)
 		goto err5;
-
-	dwc3_debugfs_init(dwc);
 
 	if (dwc->en_runtime)
 		async_schedule(dwc3_rockchip_async_probe, dwc);
@@ -1714,6 +1713,7 @@ static int dwc3_probe(struct platform_device *pdev)
 	return 0;
 
 err5:
+	dwc3_debugfs_exit(dwc);
 	dwc3_event_buffers_cleanup(dwc);
 
 	usb_phy_shutdown(dwc->usb2_phy);
