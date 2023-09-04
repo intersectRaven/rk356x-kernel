@@ -28,3 +28,9 @@ ld-option = $(success,$(LD) -v $(1))
 
 # gcc version including patch level
 gcc-version := $(shell,$(srctree)/scripts/gcc-version.sh -p $(CC) | sed 's/^0*//')
+
+# Get the linker name, version, and error out if it is not supported.
+ld-info := $(shell,$(srctree)/scripts/ld-version.sh $(LD))
+$(error-if,$(success,test -z "$(ld-info)"),Sorry$(comma) this linker is not supported.)
+ld-name := $(shell,set -- $(ld-info) && echo $1)
+ld-version := $(shell,set -- $(ld-info) && echo $2)
