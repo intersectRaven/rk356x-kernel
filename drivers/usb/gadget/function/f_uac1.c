@@ -20,10 +20,18 @@
 #include "u_audio.h"
 #include "u_uac.h"
 
+/* UAC1 spec: 3.7.2.3 Audio Channel Cluster Format */
+#define UAC1_CHANNEL_MASK 0x0FFF
+
 /*
  * DESCRIPTORS ... most are static, but strings and full
  * configuration descriptors are built on demand.
  */
+
+static inline struct f_uac1_opts *g_audio_to_uac1_opts(struct g_audio *audio)
+{
+	return container_of(audio->func.fi, struct f_uac1_opts, func_inst);
+}
 
 /*
  * We have three interfaces - one AudioControl and two AudioStreaming
@@ -710,6 +718,36 @@ static void f_audio_disable(struct usb_function *f)
 	u_audio_stop_capture(&uac1->g_audio);
 }
 
+static int f_audio_validate_opts(struct g_audio *audio, struct device *dev)
+{
+	struct f_uac1_opts *opts = g_audio_to_uac1_opts(audio);
+
+	if (!opts->p_chmask && !opts->c_chmask) {
+		dev_err(dev, "Error: no playback and capture channels\n");
+		return -EINVAL;
+	} else if (opts->p_chmask & ~UAC1_CHANNEL_MASK) {
+		dev_err(dev, "Error: unsupported playback channels mask\n");
+		return -EINVAL;
+	} else if (opts->c_chmask & ~UAC1_CHANNEL_MASK) {
+		dev_err(dev, "Error: unsupported capture channels mask\n");
+		return -EINVAL;
+	} else if ((opts->p_ssize < 1) || (opts->p_ssize > 4)) {
+		dev_err(dev, "Error: incorrect playback sample size\n");
+		return -EINVAL;
+	} else if ((opts->c_ssize < 1) || (opts->c_ssize > 4)) {
+		dev_err(dev, "Error: incorrect capture sample size\n");
+		return -EINVAL;
+	} else if (!opts->p_srate) {
+		dev_err(dev, "Error: incorrect playback sampling rate\n");
+		return -EINVAL;
+	} else if (!opts->c_srate) {
+		dev_err(dev, "Error: incorrect capture sampling rate\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /*-------------------------------------------------------------------------*/
 #define USBDHDR(p) (struct usb_descriptor_header *)(p)
 
@@ -866,6 +904,7 @@ static int f_audio_bind(struct usb_configuration *c, struct usb_function *f)
 {
 	struct usb_composite_dev	*cdev = c->cdev;
 	struct usb_gadget		*gadget = cdev->gadget;
+	struct device			*dev = &gadget->dev;
 	struct f_uac			*uac1 = func_to_uac(f);
 	struct g_audio			*audio = func_to_g_audio(f);
 	struct f_uac_opts		*audio_opts;
@@ -874,6 +913,10 @@ static int f_audio_bind(struct usb_configuration *c, struct usb_function *f)
 	struct device			*dev = &gadget->dev;
 	int				status;
 	int				idx, i;
+
+	status = f_audio_validate_opts(audio, dev);
+	if (status)
+		return status;
 
 	audio_opts = container_of(f->fi, struct f_uac_opts, func_inst);
 
