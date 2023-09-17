@@ -1351,6 +1351,15 @@ static const struct arm64_cpu_capabilities arm64_features[] = {
 		.cpu_enable = cpu_enable_ssbs,
 	},
 #endif
+	{
+		.desc = "CRC32 instructions",
+		.capability = ARM64_HAS_CRC32,
+		.type = ARM64_CPUCAP_SYSTEM_FEATURE,
+		.matches = has_cpuid_feature,
+		.sys_reg = SYS_ID_AA64ISAR0_EL1,
+		.field_pos = ID_AA64ISAR0_CRC32_SHIFT,
+		.min_field_value = 1,
+	},
 	{},
 };
 
@@ -1889,25 +1898,30 @@ static int emulate_sys_reg(u32 id, u64 *valp)
 	return 0;
 }
 
-static int emulate_mrs(struct pt_regs *regs, u32 insn)
+int do_emulate_mrs(struct pt_regs *regs, u32 sys_reg, u32 rt)
 {
 	int rc;
-	u32 sys_reg, dst;
 	u64 val;
+
+	rc = emulate_sys_reg(sys_reg, &val);
+	if (!rc) {
+		pt_regs_write_reg(regs, rt, val);
+		arm64_skip_faulting_instruction(regs, AARCH64_INSN_SIZE);
+	}
+	return rc;
+}
+
+static int emulate_mrs(struct pt_regs *regs, u32 insn)
+{
+	u32 sys_reg, rt;
 
 	/*
 	 * sys_reg values are defined as used in mrs/msr instruction.
 	 * shift the imm value to get the encoding.
 	 */
 	sys_reg = (u32)aarch64_insn_decode_immediate(AARCH64_INSN_IMM_16, insn) << 5;
-	rc = emulate_sys_reg(sys_reg, &val);
-	if (!rc) {
-		dst = aarch64_insn_decode_register(AARCH64_INSN_REGTYPE_RT, insn);
-		pt_regs_write_reg(regs, dst, val);
-		arm64_skip_faulting_instruction(regs, AARCH64_INSN_SIZE);
-	}
-
-	return rc;
+	rt = aarch64_insn_decode_register(AARCH64_INSN_REGTYPE_RT, insn);
+	return do_emulate_mrs(regs, sys_reg, rt);
 }
 
 static struct undef_hook mrs_hook = {

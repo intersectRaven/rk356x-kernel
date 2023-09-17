@@ -53,7 +53,14 @@
 #define TCR_KASAN_FLAGS 0
 #endif
 
-#define MAIR(attr, mt)	((attr) << ((mt) * 8))
+/* Default MAIR_EL1 */
+#define MAIR_EL1_SET							\
+	(MAIR_ATTRIDX(MAIR_ATTR_DEVICE_nGnRnE, MT_DEVICE_nGnRnE) |	\
+	 MAIR_ATTRIDX(MAIR_ATTR_DEVICE_nGnRE, MT_DEVICE_nGnRE) |	\
+	 MAIR_ATTRIDX(MAIR_ATTR_DEVICE_GRE, MT_DEVICE_GRE) |		\
+	 MAIR_ATTRIDX(MAIR_ATTR_NORMAL_NC, MT_NORMAL_NC) |		\
+	 MAIR_ATTRIDX(MAIR_ATTR_NORMAL, MT_NORMAL) |			\
+	 MAIR_ATTRIDX(MAIR_ATTR_NORMAL_WT, MT_NORMAL_WT))
 
 /*
  *	cpu_cache_off()
@@ -475,23 +482,9 @@ ENTRY(__cpu_setup)
 	enable_dbg				// since this is per-cpu
 	reset_pmuserenr_el0 x0			// Disable PMU access from EL0
 	/*
-	 * Memory region attributes for LPAE:
-	 *
-	 *   n = AttrIndx[2:0]
-	 *			n	MAIR
-	 *   DEVICE_nGnRnE	000	00000000
-	 *   DEVICE_nGnRE	001	00000100
-	 *   DEVICE_GRE		010	00001100
-	 *   NORMAL_NC		011	01000100
-	 *   NORMAL		100	11111111
-	 *   NORMAL_WT		101	10111011
+	 * Memory region attributes
 	 */
-	ldr	x5, =MAIR(0x00, MT_DEVICE_nGnRnE) | \
-		     MAIR(0x04, MT_DEVICE_nGnRE) | \
-		     MAIR(0x0c, MT_DEVICE_GRE) | \
-		     MAIR(0x44, MT_NORMAL_NC) | \
-		     MAIR(0xff, MT_NORMAL) | \
-		     MAIR(0xbb, MT_NORMAL_WT)
+	mov_q	x5, MAIR_EL1_SET
 	msr	mair_el1, x5
 	/*
 	 * Prepare SCTLR
@@ -501,7 +494,7 @@ ENTRY(__cpu_setup)
 	 * Set/prepare TCR and TTBR. We use 512GB (39-bit) address range for
 	 * both user and kernel.
 	 */
-	ldr	x10, =TCR_TxSZ(VA_BITS) | TCR_CACHE_FLAGS | TCR_SMP_FLAGS | \
+	mov_q	x10, TCR_TxSZ(VA_BITS) | TCR_CACHE_FLAGS | TCR_SMP_FLAGS | \
 			TCR_TG_FLAGS | TCR_KASLR_FLAGS | TCR_ASID16 | \
 			TCR_TBI0 | TCR_A1 | TCR_KASAN_FLAGS
 	tcr_set_idmap_t0sz	x10, x9

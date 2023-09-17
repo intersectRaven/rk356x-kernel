@@ -444,7 +444,7 @@ void cpu_enable_cache_maint_trap(const struct arm64_cpu_capabilities *__unused)
 static void user_cache_maint_handler(unsigned int esr, struct pt_regs *regs)
 {
 	unsigned long address;
-	int rt = (esr & ESR_ELx_SYS64_ISS_RT_MASK) >> ESR_ELx_SYS64_ISS_RT_SHIFT;
+	int rt = ESR_ELx_SYS64_ISS_RT(esr);
 	int crm = (esr & ESR_ELx_SYS64_ISS_CRM_MASK) >> ESR_ELx_SYS64_ISS_CRM_SHIFT;
 	int ret = 0;
 
@@ -479,7 +479,7 @@ static void user_cache_maint_handler(unsigned int esr, struct pt_regs *regs)
 
 static void ctr_read_handler(unsigned int esr, struct pt_regs *regs)
 {
-	int rt = (esr & ESR_ELx_SYS64_ISS_RT_MASK) >> ESR_ELx_SYS64_ISS_RT_SHIFT;
+	int rt = ESR_ELx_SYS64_ISS_RT(esr);
 	unsigned long val = arm64_ftr_reg_user_value(&arm64_ftr_reg_ctrel0);
 
 	if (cpus_have_const_cap(ARM64_WORKAROUND_1542419)) {
@@ -498,7 +498,7 @@ static void ctr_read_handler(unsigned int esr, struct pt_regs *regs)
 
 static void cntvct_read_handler(unsigned int esr, struct pt_regs *regs)
 {
-	int rt = (esr & ESR_ELx_SYS64_ISS_RT_MASK) >> ESR_ELx_SYS64_ISS_RT_SHIFT;
+	int rt = ESR_ELx_SYS64_ISS_RT(esr);
 
 	pt_regs_write_reg(regs, rt, arch_counter_get_cntvct());
 	arm64_skip_faulting_instruction(regs, AARCH64_INSN_SIZE);
@@ -506,10 +506,21 @@ static void cntvct_read_handler(unsigned int esr, struct pt_regs *regs)
 
 static void cntfrq_read_handler(unsigned int esr, struct pt_regs *regs)
 {
-	int rt = (esr & ESR_ELx_SYS64_ISS_RT_MASK) >> ESR_ELx_SYS64_ISS_RT_SHIFT;
+	int rt = ESR_ELx_SYS64_ISS_RT(esr);
 
 	pt_regs_write_reg(regs, rt, arch_timer_get_rate());
 	arm64_skip_faulting_instruction(regs, AARCH64_INSN_SIZE);
+}
+
+static void mrs_handler(unsigned int esr, struct pt_regs *regs)
+{
+	u32 sysreg, rt;
+
+	rt = ESR_ELx_SYS64_ISS_RT(esr);
+	sysreg = esr_sys64_to_sysreg(esr);
+
+	if (do_emulate_mrs(regs, sysreg, rt) != 0)
+		force_signal_inject(SIGILL, ILL_ILLOPC, regs->pc);
 }
 
 struct sys64_hook {
@@ -541,6 +552,12 @@ static struct sys64_hook sys64_hooks[] = {
 		.esr_mask = ESR_ELx_SYS64_ISS_SYS_OP_MASK,
 		.esr_val = ESR_ELx_SYS64_ISS_SYS_CNTFRQ,
 		.handler = cntfrq_read_handler,
+	},
+	{
+		/* Trap read access to CPUID registers */
+		.esr_mask = ESR_ELx_SYS64_ISS_SYS_MRS_OP_MASK,
+		.esr_val = ESR_ELx_SYS64_ISS_SYS_MRS_OP_VAL,
+		.handler = mrs_handler,
 	},
 	{},
 };
